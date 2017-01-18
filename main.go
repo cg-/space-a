@@ -9,6 +9,8 @@ import (
 
 	"strings"
 
+	"time"
+
 	"github.com/cg-/space-a/common"
 	"github.com/cg-/space-a/facebook"
 	"github.com/cg-/space-a/types"
@@ -32,7 +34,7 @@ func init() {
 	flag.Parse()
 }
 
-func updatePageData() {
+func updateAllPageData() {
 	for k, v := range facebook.PAGE_NAMES {
 		common.Debug("Updating info on " + k)
 		accessKey := APP_ID + "|" + APP_SECRET
@@ -41,8 +43,12 @@ func updatePageData() {
 			PageName: r["name"].(string),
 			ID:       r["id"].(string),
 		}
+		time.Sleep(time.Millisecond * 100)
 		r2 := facebook.Get(fmt.Sprintf("https://graph.facebook.com/v2.8/%s/albums?access_token=%s", FBPages[k].ID, APP_ID+"|"+APP_SECRET))
-		fmt.Println(r2)
+		i := ((r2["data"]).([]interface{}))
+		for k := range i {
+			fmt.Println(i[k].(map[string]interface{}))
+		}
 	}
 }
 
@@ -50,5 +56,5 @@ func main() {
 	common.Debug("Starting Up")
 	common.Debug("App ID set to " + APP_ID)
 	common.Debug("App secret set to " + APP_SECRET)
-	updatePageData()
+	updateAllPageData()
 }
