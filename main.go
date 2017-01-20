@@ -3,13 +3,9 @@ package main
 import (
 	"flag"
 
-	"fmt"
-
 	"io/ioutil"
 
 	"strings"
-
-	"time"
 
 	"github.com/cg-/space-a/common"
 	"github.com/cg-/space-a/facebook"
@@ -17,9 +13,8 @@ import (
 )
 
 var (
-	APP_SECRET string
-	APP_ID     string
-	FBPages    map[string](types.FBPage) = make(map[string](types.FBPage))
+	fbCon   *facebook.FBConnector
+	fBPages map[string](*types.FBPage) = make(map[string](*types.FBPage))
 )
 
 func init() {
@@ -27,34 +22,30 @@ func init() {
 	if err != nil {
 		common.Debug("trouble reading api settings conf")
 	}
-
 	tokens := strings.Split(string(in), "\n")
-	APP_ID = strings.TrimSpace(tokens[0])
-	APP_SECRET = strings.TrimSpace(tokens[1])
+	app_id := strings.TrimSpace(tokens[0])
+	app_secret := strings.TrimSpace(tokens[1])
+	accessKey := app_id + "|" + app_secret
+	fbCon = facebook.NewFBConnector("https://graph.gacebook.com", accessKey)
 	flag.Parse()
 }
 
 func updateAllPageData() {
 	for k, v := range facebook.PAGE_NAMES {
 		common.Debug("Updating info on " + k)
-		accessKey := APP_ID + "|" + APP_SECRET
-		r := facebook.Get(fmt.Sprintf("https://graph.facebook.com/%s?access_token=%s", v, accessKey))
-		FBPages[k] = types.FBPage{
-			PageName: r["name"].(string),
-			ID:       r["id"].(string),
+		page, err := fbCon.GetPageInfo(v)
+		if err != nil {
+			common.Debug("Error encountered in updating page data: " + err.Error())
 		}
-		time.Sleep(time.Millisecond * 100)
-		r2 := facebook.Get(fmt.Sprintf("https://graph.facebook.com/v2.8/%s/albums?access_token=%s", FBPages[k].ID, APP_ID+"|"+APP_SECRET))
-		i := ((r2["data"]).([]interface{}))
-		for k := range i {
-			fmt.Println(i[k].(map[string]interface{}))
+		fBPages[k] = page
+		err = fbCon.GetAlbumInfo(fBPages[k])
+		if err != nil {
+			common.Debug("Error encountered in updating album data: " + err.Error())
 		}
 	}
 }
 
 func main() {
 	common.Debug("Starting Up")
-	common.Debug("App ID set to " + APP_ID)
-	common.Debug("App secret set to " + APP_SECRET)
 	updateAllPageData()
 }
